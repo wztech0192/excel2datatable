@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/fixedheader/3.1.2/css/fixedHeader.dataTables.min.css">
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.5.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.5.6/js/buttons.flash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <!-- Uncomment for export pdf feature!!!! 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script
+    -->
+    <script src="https://cdn.datatables.net/buttons/1.5.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.5.6/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/fixedheader/3.1.5/js/dataTables.fixedHeader.min.js"></script>
+    <style>
+        .dt-buttons{
+            float:left;
+            margin-bottom:10px
+        }
+        .container{
+            text-align: center;
+        }
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            cursor: pointer !important;
+        }
+        .upload-btn-wrapper :hover{
+            background:red
+        }
+        .upload-btn-wrapper #upload{
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer !important;
+        }   
+        .filter-select{
+            width:100%;
+        }
+        footer{
+            position: fixed;
+            bottom:0;
+            width:100%;
+            text-align: center;
+            background:white;
+            font-size:8px;
+            font-style:italic;
+        }
+        td{
+            vertical-align: top !important;
+        }
+        td:hover{
+            background:rgba(0,0,0,0.05) !important;
+        }
+    </style>
+    <title>Excel2DataTable</title>
+</head>
+<body style="padding:20px 0px">
+    <div class="container" >
+        <h4>Ugly Excel to Datatable Converter!</h4>
+        <br>
+        <hr>
+        <br>
+        <div class="upload-btn-wrapper">
+            <button class="btn btn-dark btn-lg">Upload a Excel File</button>
+            <input type="file"  id="upload" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        </div>
+    </div>
+    <br>
+    <hr>
+    <br>
+    <h4 id="filename" style="text-align:center;color:rgba(0,0,0,0.3)">Please upload a excel file.......</h4>
+    <table class="table cell-border compact" id="datatable" style="width:100%;"></table>
+
+    <!--Feel free to remove this....-->
+    <footer>~Wrote By Wei Zheng~</footer>
+</body>
+
+
+    <script> 
+        $(document).ready(function(){
+           
+            $('#upload').change(handleFile);
+            function handleFile(e) {
+                var files = e.target.files, f = files[0];
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var data = new Uint8Array(e.target.result);
+                    var workbook = XLSX.read(data, {type: 'array'});
+                    var sheetName = workbook['SheetNames'][0];
+                    var sheet = workbook['Sheets'][sheetName];
+                    var dataset = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
+                    if(dataset.length>0){
+                        var header = dataset.shift();
+                        createDataTable(header, dataset, f.name.split('.')[0], sheetName);
+                    }else{
+                        alert("No Data available")
+                    }
+                    /* DO SOMETHING WITH workbook HERE */
+                };
+                reader.readAsArrayBuffer(f);
+            }
+        });
+
+        var table;
+        function createDataTable(header, dataset, fileName, sheetName){
+            $('#filename').text(fileName);
+            if(table){
+                $('#datatable').DataTable().destroy();
+            }
+            $('#datatable').html("")
+            table = $('#datatable').DataTable( {
+                dom: 'Bfrtip',
+                destroy:true,
+                buttons: [
+                    'copy', 'csv', 'pdf', 'print', {
+                        extend: 'excelHtml5',
+                        autoFilter: true,
+                        sheetName: sheetName,
+                        filename: fileName,
+                        title: '',
+                        customize: function(xlsx) {
+                            var sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            var sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            //wrap word
+                            $('row c', sheet).attr( 's', '55' ); 
+                            //highlight header
+                            $('row:first c', sheet).attr( 's', '7' );
+                            var col= $('col', sheet);
+                            //set width for each column
+                            col.each(function () {
+                               // $(this).attr('width', 1000);
+                                $(this).attr( 's', '7' );
+                            });
+                        }
+                    }
+                ],
+                data: dataset,
+                columns: header.map(val=>({
+                    title:val
+                })),
+                orderCellsTop: false,
+                fixedHeader: {
+                    header: true,
+                    footer:true
+                },      
+                order:[],
+                scrollX: true,
+                autoWidth:true,
+                columnDefs: [
+                    {
+                    render: function (data, type, full, meta) {
+                        var width = data.length * 5;
+                        if(width>400){
+                            width = 400;
+                        }else if(width<100){
+                            width = 100;
+                        }
+                        return "<div class='text-wrap' style='width:"+width+"px;'>"+ data + "</div>";
+                    },
+                    targets: '_all'
+                    }
+                ],
+                initComplete: function () {
+                    $('.dt-button').attr('class', 'btn btn-dark btn-md');
+                    var tr = $('<tr></tr>').appendTo('.dataTables_scrollHead thead');
+                    this.api().columns().every( function () {
+                        var column = this;
+                        var th = $('<th></th>');
+                        var select = $('<select class="filter-select"><option value=""></option></select>').appendTo(th)
+                            .on('change', function () {
+                                var val = $.fn.dataTable.util.escapeRegex(
+                                    $(this).val()
+                                );
+                                column
+                                    .search( val ? '^'+val+'$' : '', true, false )
+                                    .draw();
+                            });
+                        column.data().unique().sort().each( function ( d, j ) {
+                            if(d){
+                                select.append('<option value="'+d+'">'+d+'</option>')
+                            }
+                        } );
+                        tr.append(th);
+                    });
+                }
+            });
+        }
+    </script>
+</html>
+
