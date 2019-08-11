@@ -99,9 +99,10 @@
                 var reader = new FileReader();
                 reader.onload = function(e) {
                     var data = new Uint8Array(e.target.result);
-                    var workbook = XLSX.read(data, {type: 'array'});
+                    var workbook = XLSX.read(data, {type: 'array', raw:true});
                     var sheetName = workbook['SheetNames'][0];
                     var sheet = workbook['Sheets'][sheetName];
+                    console.log(sheet);
                     var dataset = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
                     if(dataset.length>0){
                         var header = dataset.shift();
@@ -109,7 +110,6 @@
                     }else{
                         alert("No Data available")
                     }
-                    /* DO SOMETHING WITH workbook HERE */
                 };
                 reader.readAsArrayBuffer(f);
             }
@@ -129,11 +129,9 @@
                     'copy', 'csv', 'pdf', 'print', {
                         extend: 'excelHtml5',
                         autoFilter: true,
-                        sheetName: sheetName,
                         filename: fileName,
                         title: '',
                         customize: function(xlsx) {
-                            var sheet = xlsx.xl.worksheets['sheet1.xml'];
                             var sheet = xlsx.xl.worksheets['sheet1.xml'];
                             //wrap word
                             $('row c', sheet).attr( 's', '55' ); 
